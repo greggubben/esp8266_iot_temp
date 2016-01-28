@@ -36,12 +36,12 @@ const char* mqtt_YouAreSubTopic = "/youare";
 const char* mqtt_dataTopic = "data/tandh";
 char mqtt_subscribedTopic[50];
 
-//PubSubClient mqttClient(wifiClient);
+PubSubClient mqttClient(wifiClient);
 
 /*
  * Web Server Settings
  */
-//ESP8266WebServer webServer(80);
+ESP8266WebServer webServer(80);
 
 /*
  * ThingSpeak Settings
@@ -105,17 +105,17 @@ void setup()
   strcpy(sensorName,clientName);
 
   // Set up MQTT connection
-  //strcpy(mqtt_subscribedTopic, mac);      // Subscribed Topic will be the same as the MAC address
-  //mqttClient.setServer(mqtt_server, mqtt_port);
-  //mqttClient.setCallback(mqttCallback);
+  strcpy(mqtt_subscribedTopic, mac);      // Subscribed Topic will be the same as the MAC address
+  mqttClient.setServer(mqtt_server, mqtt_port);
+  mqttClient.setCallback(mqttCallback);
 
   // Set up Thing Speak connection
   getThingSpeakKey();
 
   // Set up Web Server
-  //webServer.on("/", webServer_root);
-  //webServer.on("/json", webServer_json);
-  //webServer.begin();
+  webServer.on("/", webServer_root);
+  webServer.on("/json", webServer_json);
+  webServer.begin();
 
   lastMsg = 0;
   wifi_set_sleep_type(LIGHT_SLEEP_T);
@@ -126,7 +126,8 @@ void setup()
  */
 void loop()
 {
-/* 
+ 
+  // Make sure we are still connected to the MQTT Broker and reconnect if not
   if (!mqttClient.connected()) {
     mqttConnect();
 
@@ -148,10 +149,14 @@ void loop()
 
     delay(2000);  // Give the server time to process the who am i message
   }
-*/
-  //mqttClient.loop();
-  //webServer.handleClient();
 
+  // Handle any MQTT requests
+  mqttClient.loop();
+
+  // Handle any Web Server requests
+  webServer.handleClient();
+
+  // Check if enough time has elapsed, if so collect sensor readings and share
   unsigned long now = millis();
   if (now - lastMsg > timeBetweenUpdates) {
     wifi_set_sleep_type(NONE_SLEEP_T);
@@ -166,7 +171,7 @@ void loop()
     printValues();
 
     // Send the Sensor data to MQTT broker
-    //mqttSend(mqtt_dataTopic, sensorJSON);
+    mqttSend(mqtt_dataTopic, sensorJSON);
 
     // Send the Sensor data to Thing Speak
     sendThingSpeak();
@@ -184,7 +189,7 @@ void loop()
 /*
  * Process an inbound message.
  */
- /*
+
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
@@ -229,11 +234,11 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     }
   }
 }
-*/
+
 /*
  * Connect to the MQTT Broker and subscribe to our inbound topic.
  */
-/*
+
 void mqttConnect() {
   // Loop until we're reconnected
   while (!mqttClient.connected()) {
@@ -259,11 +264,11 @@ void mqttConnect() {
     }
   }
 }
-*/
+
 /*
  * Send a Message to the MQTT broker
  */
-/*
+
 void mqttSend(const char* topic, char* message) {
   Serial.print("Sending MQTT Message '");
   Serial.print(message);
@@ -279,7 +284,7 @@ void mqttSend(const char* topic, char* message) {
     Serial.println(mqttClient.state());
   }
 }
-*/
+
 
 /**********************************************************************
  * Thing Speak Routines
@@ -541,7 +546,7 @@ void buildSensorJSON(char* sensor, int len) {
 /**********************************************************************
  * Web Server Routines
  **********************************************************************/
-/*
+
 void webServer_root() {
   char localip[16];
   IPAddress ip = WiFi.localIP();
@@ -618,4 +623,4 @@ void webServer_json() {
   response = String(sensorJSON);   // Arduino has a hard time with float to string
   webServer.send(200, "application/json", response);            // send to someones browser when asked
 }
-*/
+
